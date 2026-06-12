@@ -155,6 +155,10 @@ async function main() {
   }
 
   const passwordHash = await bcrypt.hash("admin123", 12);
+  const ownerPasswordHash = await bcrypt.hash(
+    process.env.OWNER_PASSWORD ?? "Komardarja_1",
+    12
+  );
 
   const superAdmin = await prisma.user.upsert({
     where: { email: "admin@crm.local" },
@@ -167,15 +171,16 @@ async function main() {
     update: { passwordHash, isSuperAdmin: true },
   });
 
-  await prisma.user.upsert({
+  const ownerUser = await prisma.user.upsert({
     where: { email: "redtocila@gmail.com" },
     create: {
       email: "redtocila@gmail.com",
       name: "RedTocila",
-      passwordHash,
+      passwordHash: ownerPasswordHash,
       isSuperAdmin: true,
+      status: "ACTIVE",
     },
-    update: { passwordHash, isSuperAdmin: true },
+    update: { isSuperAdmin: true, name: "RedTocila", status: "ACTIVE" },
   });
 
   const demoUser = await prisma.user.upsert({
@@ -293,6 +298,11 @@ async function main() {
     await prisma.companyMember.upsert({
       where: { companyId_userId: { companyId: company.id, userId: superAdmin.id } },
       create: { companyId: company.id, userId: superAdmin.id, roleId: ownerRole.id, memberTag: "ADMIN" },
+      update: { roleId: ownerRole.id, memberTag: "ADMIN" },
+    });
+    await prisma.companyMember.upsert({
+      where: { companyId_userId: { companyId: company.id, userId: ownerUser.id } },
+      create: { companyId: company.id, userId: ownerUser.id, roleId: ownerRole.id, memberTag: "ADMIN" },
       update: { roleId: ownerRole.id, memberTag: "ADMIN" },
     });
   }

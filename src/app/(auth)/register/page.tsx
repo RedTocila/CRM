@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
@@ -65,14 +66,14 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {(["name", "email", "password", "companyName"] as const).map((field) => (
+            {(["name", "email", "companyName"] as const).map((field) => (
               <div key={field} className="space-y-2">
                 <Label htmlFor={field}>
                   {field === "companyName" ? "Company Name" : field.charAt(0).toUpperCase() + field.slice(1)}
                 </Label>
                 <Input
                   id={field}
-                  type={field === "password" ? "password" : field === "email" ? "email" : "text"}
+                  type={field === "email" ? "email" : "text"}
                   value={form[field]}
                   onChange={(e) => setForm({ ...form, [field]: e.target.value })}
                   required
@@ -80,6 +81,16 @@ export default function RegisterPage() {
                 />
               </div>
             ))}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <PasswordInput
+                id="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+                className="h-11"
+              />
+            </div>
             <Button type="submit" className="w-full h-11" disabled={loading}>
               {loading ? "Creating..." : "Create Account"}
             </Button>
