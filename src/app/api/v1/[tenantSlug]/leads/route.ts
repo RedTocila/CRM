@@ -55,6 +55,7 @@ export const GET = withApi(
       const source = searchParams.get("source");
       const priority = searchParams.get("priority");
       const assignedToId = searchParams.get("assignedToId");
+      const agentId = searchParams.get("agentId");
       const assigned = searchParams.get("assigned");
       const country = searchParams.get("country");
       const tagId = searchParams.get("tagId");
@@ -62,11 +63,11 @@ export const GET = withApi(
       const to = searchParams.get("to");
 
       const where: Prisma.LeadWhereInput = {
-        ...leadListWhere(user, companyId),
+        ...leadListWhere(user, companyId, agentId ?? assignedToId),
         ...(status ? { status: status as never } : {}),
         ...(source ? { source: source as never } : {}),
         ...(priority ? { priority: priority as never } : {}),
-        ...(assignedToId ? { assignedToId } : {}),
+        ...(assignedToId && !agentId ? { assignedToId } : {}),
         ...(assigned === "unassigned" ? { assignedToId: null } : {}),
         ...(assigned === "assigned" ? { assignedToId: { not: null } } : {}),
         ...(country ? { country: { equals: country, mode: "insensitive" } } : {}),

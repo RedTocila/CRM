@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Download,
@@ -55,8 +55,10 @@ const ADMIN_ROLES = new Set(["owner", "admin", "manager"]);
 
 export default function LeadsPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const router = useRouter();
+  const urlAgentId = searchParams.get("agentId");
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -77,6 +79,7 @@ export default function LeadsPage() {
       if (status !== "all") params.set("status", status);
       if (source !== "all") params.set("source", source);
       if (assigned !== "all") params.set("assigned", assigned);
+      if (urlAgentId && isAdmin) params.set("agentId", urlAgentId);
       const res = await fetch(`/api/v1/${tenantSlug}/leads?${params}`);
       const json = await res.json();
       setLeads(json.data ?? []);
@@ -85,7 +88,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [tenantSlug, q, status, source, assigned]);
+  }, [tenantSlug, q, status, source, assigned, urlAgentId, isAdmin]);
 
   useEffect(() => {
     const t = setTimeout(load, 300);

@@ -6,12 +6,13 @@ import { leadListWhere } from "@/lib/leads/access";
 import { KANBAN_STATUSES, LOST_STATUSES } from "@/lib/leads/constants";
 
 export const GET = withApi(
-  async (_req, { companyId, user }) => {
+  async (req, { companyId, user }) => {
     const denied = requirePerm(user, "leads.lead.read");
     if (denied) return denied;
     try {
+      const agentId = new URL(req.url).searchParams.get("agentId");
       const leads = await prisma.lead.findMany({
-        where: leadListWhere(user, companyId),
+        where: leadListWhere(user, companyId, agentId),
         orderBy: [{ kanbanOrder: "asc" }, { updatedAt: "desc" }],
         include: {
           assignee: { select: { id: true, name: true } },

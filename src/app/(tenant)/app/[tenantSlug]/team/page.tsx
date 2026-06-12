@@ -37,6 +37,7 @@ interface Member {
 
 const MEMBER_TAGS = ["ADMIN", "AGENT", "DEVELOPER", "MANAGER"] as const;
 const ADMIN_ROLES = new Set(["owner", "admin"]);
+const ADMIN_VIEW_ROLES = new Set(["owner", "admin", "manager"]);
 
 export default function TeamPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -56,6 +57,10 @@ export default function TeamPage() {
   const canManageAccounts =
     session?.user?.isSuperAdmin ||
     ADMIN_ROLES.has(session?.user?.roleSlug ?? "");
+
+  const canViewAgentProfiles =
+    session?.user?.isSuperAdmin ||
+    ADMIN_VIEW_ROLES.has(session?.user?.roleSlug ?? "");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,7 +121,14 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team" description="Everyone in your workspace with role tags">
+      <PageHeader
+        title="Team"
+        description={
+          canManageAccounts
+            ? "Everyone in your workspace — click an agent to see their full workspace"
+            : "Your team — view your profile and colleagues"
+        }
+      >
         <Button variant="ghost" size="icon" onClick={load}>
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -144,12 +156,16 @@ export default function TeamPage() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link
-                      href={`/app/${tenantSlug}/agents/${m.user.id}`}
-                      className="font-medium text-sm hover:underline"
-                    >
-                      {m.user.name ?? m.user.email}
-                    </Link>
+                    {canViewAgentProfiles || m.user.id === session?.user?.id ? (
+                      <Link
+                        href={`/app/${tenantSlug}/agents/${m.user.id}`}
+                        className="font-medium text-sm hover:underline"
+                      >
+                        {m.user.name ?? m.user.email}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-sm">{m.user.name ?? m.user.email}</span>
+                    )}
                     <MemberTagBadge tag={m.memberTag} />
                   </div>
                   <p className="text-xs text-muted-foreground">{m.user.email}</p>

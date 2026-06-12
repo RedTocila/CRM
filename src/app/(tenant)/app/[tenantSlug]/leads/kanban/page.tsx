@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   DndContext,
   DragEndEvent,
@@ -107,6 +107,8 @@ function KanbanColumn({
 
 export default function LeadsKanbanPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
+  const searchParams = useSearchParams();
+  const agentId = searchParams.get("agentId");
   const router = useRouter();
   const [columns, setColumns] = useState<Column[]>([]);
   const [activeLead, setActiveLead] = useState<LeadCard | null>(null);
@@ -116,7 +118,8 @@ export default function LeadsKanbanPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/v1/${tenantSlug}/leads/kanban`);
+      const qs = agentId ? `?agentId=${agentId}` : "";
+      const res = await fetch(`/api/v1/${tenantSlug}/leads/kanban${qs}`);
       const json = await res.json();
       setColumns(json.data ?? []);
     } catch {
@@ -124,7 +127,7 @@ export default function LeadsKanbanPage() {
     } finally {
       setLoading(false);
     }
-  }, [tenantSlug]);
+  }, [tenantSlug, agentId]);
 
   useEffect(() => {
     load();
@@ -167,7 +170,10 @@ export default function LeadsKanbanPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Lead Pipeline" description="Drag leads across stages">
+      <PageHeader
+        title={agentId ? "Agent pipeline" : "Lead Pipeline"}
+        description={agentId ? "Assigned leads by stage" : "Drag leads across stages"}
+      >
         <Button variant="outline" size="sm" asChild>
           <Link href={`/app/${tenantSlug}/leads`}>
             <ArrowLeft className="h-4 w-4 mr-1" /> List

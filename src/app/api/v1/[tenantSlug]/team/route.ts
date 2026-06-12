@@ -24,27 +24,40 @@ export const GET = withApi(
     const { searchParams } = new URL(req.url);
     const agentsOnly = searchParams.get("agentsOnly") === "true";
 
-    const members = await prisma.companyMember.findMany({
-      where: {
-        companyId,
-        ...(agentsOnly ? { role: { slug: "sales" } } : {}),
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true, status: true } },
-        role: { select: { id: true, name: true, slug: true } },
-      },
-      orderBy: { joinedAt: "asc" },
-    });
-
-    if (agentsOnly) {
-      return jsonOk({
-        data: members.map((m) => ({
-          id: m.user.id,
-          name: m.user.name ?? m.user.email,
-          email: m.user.email,
-        })),
+      const members = await prisma.companyMember.findMany({
+        where: {
+          companyId,
+          ...(agentsOnly ? { role: { slug: "sales" } } : {}),
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true, status: true } },
+          role: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { joinedAt: "asc" },
       });
-    }
+
+      if (agentsOnly) {
+        const withStats = await Promise.all(
+          members.map(async (m) => {
+            const [assignedLeads, callsMade, emailsSent] = await Promise.all([
+              prisma.lead.count({
+                where: { companyId, assignedToId: m.user.id, deletedAt: null },
+              }),
+              prisma.leadCall.count({ where: { companyId, userId: m.user.id } }),
+              prisma.leadEmail.count({ where: { companyId, userId: m.user.id } }),
+            ]);
+            return {
+              id: m.user.id,
+              name: m.user.name ?? m.user.email,
+              email: m.user.email,
+              assignedLeads,
+              callsMade,
+              emailsSent,
+            };
+          })
+        );
+        return jsonOk({ data: withStats });
+      }
 
     return jsonOk({ data: members });
   },

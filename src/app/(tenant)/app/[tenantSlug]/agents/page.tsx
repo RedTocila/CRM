@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { RefreshCw, UserPlus } from "lucide-react";
+import { BarChart3, Mail, Phone, RefreshCw, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -16,14 +18,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 interface Agent {
   id: string;
   name: string;
   email: string;
+  assignedLeads: number;
+  callsMade: number;
+  emailsSent: number;
 }
 
 const ADMIN_ROLES = new Set(["owner", "admin"]);
@@ -63,7 +66,7 @@ export default function AgentsPage() {
       const res = await fetch(`/api/v1/${tenantSlug}/team`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, roleSlug: "sales" }),
+        body: JSON.stringify({ ...form, roleSlug: "sales", memberTag: "AGENT" }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed to add agent");
@@ -82,7 +85,7 @@ export default function AgentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Agents"
-        description="Create sales agent logins. New leads stay in your inbox until you assign them."
+        description="Sales agent accounts — each sees assigned leads, email templates, pipeline, team, and personal reports"
       >
         <Button variant="ghost" size="icon" onClick={load}>
           <RefreshCw className="h-4 w-4" />
@@ -105,15 +108,7 @@ export default function AgentsPage() {
           <div className="p-5 space-y-3">
             {agents.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No agents yet.{" "}
-                <button
-                  type="button"
-                  className="text-primary underline"
-                  onClick={() => setDialogOpen(true)}
-                >
-                  Add your first agent
-                </button>{" "}
-                to start assigning leads from the{" "}
+                No agents yet. Create an agent account, then assign leads from the{" "}
                 <Link href={`/app/${tenantSlug}/leads`} className="text-primary underline">
                   Leads inbox
                 </Link>
@@ -123,7 +118,7 @@ export default function AgentsPage() {
             {agents.map((a) => (
               <div
                 key={a.id}
-                className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 last:border-0 last:pb-0"
               >
                 <div>
                   <Link
@@ -133,58 +128,76 @@ export default function AgentsPage() {
                     {a.name}
                   </Link>
                   <p className="text-xs text-muted-foreground">{a.email}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    <span>{a.assignedLeads} leads</span>
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3" /> {a.callsMade}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3" /> {a.emailsSent}
+                    </span>
+                  </div>
                 </div>
-                <Badge>Sales Agent</Badge>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/app/${tenantSlug}/agents/${a.id}`}>
+                      <BarChart3 className="h-3 w-3 mr-1" /> View all
+                    </Link>
+                  </Button>
+                  <Badge>Sales Agent</Badge>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add sales agent</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={addAgent} className="space-y-4">
-            <div>
-              <Label>Full name</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Label>Email (login)</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Label>Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                minLength={8}
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Creating..." : "Create Agent"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {dialogOpen && (
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add sales agent</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={addAgent} className="space-y-4">
+              <div>
+                <Label>Full name</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Email (login)</Label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  minLength={8}
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Creating..." : "Create Agent"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

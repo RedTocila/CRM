@@ -4,7 +4,7 @@ const ROLE_MODULE_ACCESS: Record<string, string[]> = {
   owner: MODULE_MANIFESTS.map((m) => m.id),
   admin: MODULE_MANIFESTS.map((m) => m.id),
   manager: MODULE_MANIFESTS.filter((m) => m.id !== "agents").map((m) => m.id),
-  sales: ["dashboard", "leads", "pipeline", "reports"],
+  sales: ["dashboard", "leads", "pipeline", "email_campaigns", "team", "reports"],
   marketing: ["dashboard", "leads", "marketing", "email_campaigns", "forms", "reports"],
   support: ["dashboard", "reports"],
   developer: MODULE_MANIFESTS.map((m) => m.id),

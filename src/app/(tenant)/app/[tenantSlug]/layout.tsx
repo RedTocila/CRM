@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/db";
 import { getEnabledModules, getAllManifests, isModuleEnabled } from "@/lib/modules/registry";
+import { getAccessForRole } from "@/lib/team/agent-access";
 import { TenantSidebar, AiAssistantButton } from "@/components/tenant/sidebar";
 import { TenantHeader } from "@/components/tenant/header";
 import { ThemeProvider } from "@/components/tenant/theme-provider";
@@ -34,7 +35,15 @@ export default async function TenantLayout({
     : await getEnabledModules(company.id);
   const aiEnabled = isSuperAdmin || (await isModuleEnabled(company.id, "ai_assistant"));
 
-  const navModules = enabledModules.map((m) => ({
+  const roleAccess = getAccessForRole(
+    session.user.roleSlug ?? "",
+    session.user.permissions ?? []
+  );
+  const allowedIds = new Set(roleAccess.modules);
+
+  const navModules = enabledModules
+    .filter((m) => isSuperAdmin || allowedIds.has(m.id))
+    .map((m) => ({
     id: m.id,
     name: m.name,
     icon: m.icon,

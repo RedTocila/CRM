@@ -53,9 +53,14 @@ const ROLE_PERMISSIONS: Record<string, string[] | "*"> = {
   owner: "*",
   admin: "*",
   manager: ALL_PERMISSIONS.filter((p) => !p.key.startsWith("settings.")).map((p) => p.key),
-  sales: ALL_PERMISSIONS.filter((p) =>
-    ["leads", "pipeline", "reports"].some((m) => p.key.startsWith(m))
-  ).map((p) => p.key),
+  sales: ALL_PERMISSIONS.filter((p) => {
+    if (p.key.startsWith("pipeline.")) return p.key.endsWith(".read");
+    if (p.key.startsWith("team.")) return p.key.endsWith(".read");
+    if (p.key.startsWith("email_campaigns.")) return p.key.endsWith(".read");
+    if (p.key.startsWith("reports.")) return p.key.endsWith(".read");
+    if (p.key.startsWith("leads.")) return !p.key.endsWith(".delete");
+    return false;
+  }).map((p) => p.key),
   support: ALL_PERMISSIONS.filter((p) => p.key.startsWith("reports")).map((p) => p.key),
   marketing: ALL_PERMISSIONS.filter((p) =>
     ["marketing", "email_campaigns", "forms", "leads"].some((m) => p.key.startsWith(m))
@@ -170,7 +175,7 @@ async function main() {
       passwordHash,
       isSuperAdmin: true,
     },
-    update: { isSuperAdmin: true },
+    update: { passwordHash, isSuperAdmin: true },
   });
 
   const demoUser = await prisma.user.upsert({
@@ -406,6 +411,147 @@ Based on our conversations, it sounds like we're aligned. I can send the agreeme
 Shall I proceed?
 
 Best,
+{{agent_name}}`,
+    },
+    {
+      slug: "greeting-welcome",
+      name: "Welcome new client",
+      category: "GREETING" as const,
+      subject: "Welcome to {{company_name}}!",
+      body: `Hi {{first_name}},
+
+Welcome aboard! We're thrilled to have you with {{company_name}}.
+
+Your dedicated contact is {{agent_name}} — reach out anytime at {{agent_email}}.
+
+Here's what happens next:
+{{next_steps}}
+
+Warm regards,
+{{agent_name}}`,
+    },
+    {
+      slug: "greeting-holiday",
+      name: "Holiday greeting",
+      category: "GREETING" as const,
+      subject: "Happy {{holiday}} from {{company_name}}",
+      body: `Hi {{first_name}},
+
+Wishing you and your team a wonderful {{holiday}}!
+
+Thank you for being a valued part of our community.
+
+Best wishes,
+{{agent_name}}
+{{company_name}}`,
+    },
+    {
+      slug: "greeting-check-in",
+      name: "Friendly check-in",
+      category: "GREETING" as const,
+      subject: "Just checking in, {{first_name}}",
+      body: `Hi {{first_name}},
+
+Hope you're doing well! I wanted to reach out and see how things are going on your end.
+
+Is there anything we can help with this week?
+
+Cheers,
+{{agent_name}}`,
+    },
+    {
+      slug: "billing-invoice-sent",
+      name: "Invoice sent",
+      category: "BILLING" as const,
+      subject: "Invoice #{{invoice_number}} from {{company_name}}",
+      body: `Hi {{first_name}},
+
+Please find your invoice attached for {{amount}} due on {{due_date}}.
+
+Invoice #: {{invoice_number}}
+Payment link: {{payment_link}}
+
+If you have any questions about this invoice, reply to this email.
+
+Thank you,
+{{company_name}} Billing`,
+    },
+    {
+      slug: "billing-payment-reminder",
+      name: "Payment reminder",
+      category: "BILLING" as const,
+      subject: "Reminder: Invoice #{{invoice_number}} due {{due_date}}",
+      body: `Hi {{first_name}},
+
+This is a friendly reminder that invoice #{{invoice_number}} for {{amount}} is due on {{due_date}}.
+
+Pay now: {{payment_link}}
+
+If you've already sent payment, please disregard this message.
+
+Best,
+{{company_name}} Billing`,
+    },
+    {
+      slug: "billing-payment-received",
+      name: "Payment received",
+      category: "BILLING" as const,
+      subject: "Payment received — thank you!",
+      body: `Hi {{first_name}},
+
+We've received your payment of {{amount}} for invoice #{{invoice_number}}.
+
+Thank you for your business!
+
+Best regards,
+{{company_name}}`,
+    },
+    {
+      slug: "review-google-request",
+      name: "Google review request",
+      category: "REVIEW" as const,
+      subject: "We'd love your feedback, {{first_name}}",
+      body: `Hi {{first_name}},
+
+Thank you for choosing {{company_name}}! If you had a great experience, would you mind leaving us a quick Google review?
+
+It only takes a minute: {{review_link}}
+
+Your feedback helps us serve you and others better.
+
+Thanks so much,
+{{agent_name}}`,
+    },
+    {
+      slug: "review-post-purchase",
+      name: "Post-purchase review",
+      category: "REVIEW" as const,
+      subject: "How was your experience with {{product_name}}?",
+      body: `Hi {{first_name}},
+
+We hope you're enjoying {{product_name}}!
+
+We'd love to hear how it's going. Your honest review helps us improve and helps others make informed decisions.
+
+Share your thoughts: {{review_link}}
+
+Thank you,
+{{agent_name}}`,
+    },
+    {
+      slug: "review-testimonial",
+      name: "Testimonial request",
+      category: "REVIEW" as const,
+      subject: "Would you share a quick testimonial?",
+      body: `Hi {{first_name}},
+
+We're putting together success stories from clients like you. Would you be willing to share a short testimonial about your experience with {{company_name}}?
+
+A few sentences about {{highlight}} would be perfect.
+
+You can reply directly to this email — we'll only publish with your approval.
+
+Thanks,
 {{agent_name}}`,
     },
   ];

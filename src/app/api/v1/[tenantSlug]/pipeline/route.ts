@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { withApi } from "@/lib/api/middleware";
 import { jsonOk, handleApiError } from "@/lib/api/response";
 import { requirePerm } from "@/lib/api/guard";
+import { canManagePipelines } from "@/lib/pipeline/access";
+import { jsonError } from "@/lib/api/response";
 
 const stageSchema = z.object({
   name: z.string().min(1),
@@ -38,9 +40,18 @@ export const POST = withApi(
   async (req, { companyId, user }) => {
     const denied = requirePerm(user, "pipeline.pipeline.create");
     if (denied) return denied;
+    if (!canManagePipelines(user)) {
+      return jsonError("Only CRM admins can create pipelines", 403);
+    }
     try {
       const body = createPipelineSchema.parse(await req.json());
       const { stages, ...pipelineData } = body;
+
+      const defaultStages = stages ?? [
+        { name: "New", order: 0, probability: 10 },
+        { name: "In Progress", order: 1, probability: 50 },
+        { name: "Won", order: 2, probability: 100 },
+      ];
 
       if (pipelineData.isDefault) {
         await prisma.pipeline.updateMany({
@@ -53,15 +64,13 @@ export const POST = withApi(
         data: {
           ...pipelineData,
           companyId,
-          stages: stages
-            ? {
-                create: stages.map((s) => ({
-                  name: s.name,
-                  order: s.order,
-                  probability: s.probability ?? 0,
-                })),
-              }
-            : undefined,
+          stages: {
+            create: defaultStages.map((s) => ({
+              name: s.name,
+              order: s.order,
+              probability: s.probability ?? 0,
+            })),
+          },
         },
         include: { stages: { orderBy: { order: "asc" } } },
       });

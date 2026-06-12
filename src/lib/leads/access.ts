@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { SessionUser } from "@/types/auth";
+import { isSalesAgent, resolveAgentId } from "@/lib/agents/scope";
 
 const ADMIN_ROLES = new Set(["owner", "admin", "manager"]);
 
@@ -8,18 +9,25 @@ export function canAssignLeads(user: SessionUser): boolean {
   return ADMIN_ROLES.has(user.roleSlug ?? "");
 }
 
-/** Sales agents only see leads assigned to them. Company admins see all (including unassigned inbox). */
+/** Sales agents only see leads assigned to them. Admins see all (optional agentId filter). */
 export function leadListWhere(
   user: SessionUser,
-  companyId: string
+  companyId: string,
+  agentIdParam?: string | null
 ): Prisma.LeadWhereInput {
   const base: Prisma.LeadWhereInput = { companyId, deletedAt: null };
 
-  if (user.isSuperAdmin) return base;
+  if (user.isSuperAdmin) {
+    const agentId = resolveAgentId(user, agentIdParam);
+    return agentId ? { ...base, assignedToId: agentId } : base;
+  }
 
-  if (user.roleSlug === "sales") {
+  if (isSalesAgent(user)) {
     return { ...base, assignedToId: user.id };
   }
+
+  const agentId = resolveAgentId(user, agentIdParam);
+  if (agentId) return { ...base, assignedToId: agentId };
 
   return base;
 }

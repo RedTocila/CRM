@@ -33,8 +33,25 @@ const CATEGORY_LABELS: Record<string, string> = {
   THANK_YOU: "Thank you",
   OBJECTION: "Objection handling",
   CLOSING: "Closing",
+  GREETING: "Greetings",
+  BILLING: "Billing & invoices",
+  REVIEW: "Reviews & testimonials",
   CUSTOM: "Custom",
 };
+
+const CATEGORY_ORDER = [
+  "GREETING",
+  "INTRODUCTION",
+  "FOLLOW_UP",
+  "PROPOSAL",
+  "MEETING",
+  "THANK_YOU",
+  "BILLING",
+  "REVIEW",
+  "OBJECTION",
+  "CLOSING",
+  "CUSTOM",
+];
 
 export default function EmailCampaignsPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
@@ -74,7 +91,7 @@ export default function EmailCampaignsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Email Campaigns"
-        description="Ready-made templates for agents and email sequences"
+        description="Ready-made templates — greetings, billing, reviews, sales outreach, and more"
       >
         <Button variant="ghost" size="icon" onClick={load}>
           <RefreshCw className="h-4 w-4" />
@@ -84,7 +101,7 @@ export default function EmailCampaignsPage() {
       <Tabs defaultValue="templates">
         <TabsList>
           <TabsTrigger value="templates">
-            <Mail className="h-4 w-4 mr-2" /> Agent Templates
+            <Mail className="h-4 w-4 mr-2" /> Email Templates
           </TabsTrigger>
           <TabsTrigger value="sequences">Sequences</TabsTrigger>
         </TabsList>
@@ -97,11 +114,11 @@ export default function EmailCampaignsPage() {
               No templates yet. Run database seed to load defaults.
             </p>
           ) : (
-            Object.entries(grouped).map(([cat, items]) => (
+            CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => (
               <div key={cat}>
                 <h2 className="font-semibold mb-3">{CATEGORY_LABELS[cat] ?? cat}</h2>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {items.map((t) => (
+                  {grouped[cat].map((t) => (
                     <div
                       key={t.id}
                       className="rounded-xl border bg-card p-4 flex flex-col gap-3"

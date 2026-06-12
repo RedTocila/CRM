@@ -12,6 +12,9 @@ const CATEGORIES = [
   "THANK_YOU",
   "OBJECTION",
   "CLOSING",
+  "GREETING",
+  "BILLING",
+  "REVIEW",
   "CUSTOM",
 ] as const;
 

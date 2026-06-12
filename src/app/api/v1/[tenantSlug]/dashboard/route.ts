@@ -2,52 +2,72 @@ import { prisma } from "@/lib/db";
 import { withApi } from "@/lib/api/middleware";
 import { jsonOk, jsonError, handleApiError } from "@/lib/api/response";
 import { requirePerm } from "@/lib/api/guard";
+import { resolveAgentId } from "@/lib/agents/scope";
 
-async function executiveStats(companyId: string) {
+async function executiveStats(companyId: string, agentId: string | null) {
+  const leadFilter = agentId
+    ? { companyId, deletedAt: null, assignedToId: agentId }
+    : { companyId, deletedAt: null };
+
   const [leads, contacts, deals, revenue, openTickets] = await Promise.all([
-    prisma.lead.count({ where: { companyId, deletedAt: null } }),
-    prisma.contact.count({ where: { companyId, deletedAt: null } }),
-    prisma.deal.count({ where: { companyId, status: "OPEN", deletedAt: null } }),
-    prisma.deal.aggregate({
-      where: { companyId, status: "WON", deletedAt: null },
-      _sum: { value: true },
-    }),
-    prisma.ticket.count({
+    prisma.lead.count({ where: leadFilter }),
+    agentId
+      ? prisma.lead.count({ where: { ...leadFilter, status: "WON" } })
+      : prisma.contact.count({ where: { companyId, deletedAt: null } }),
+    prisma.deal.count({
       where: {
         companyId,
+        status: "OPEN",
         deletedAt: null,
-        status: { in: ["OPEN", "IN_PROGRESS", "WAITING"] },
+        ...(agentId ? { createdById: agentId } : {}),
       },
     }),
+    prisma.lead.aggregate({
+      where: { ...leadFilter, status: "WON" },
+      _sum: { expectedRevenue: true },
+    }),
+    agentId
+      ? Promise.resolve(0)
+      : prisma.ticket.count({
+          where: {
+            companyId,
+            deletedAt: null,
+            status: { in: ["OPEN", "IN_PROGRESS", "WAITING"] },
+          },
+        }),
   ]);
 
   return {
     leads,
-    contacts,
+    contacts: agentId ? leads : contacts,
     openDeals: deals,
-    wonRevenue: revenue._sum.value ?? 0,
+    wonRevenue: revenue._sum.expectedRevenue ?? 0,
     openTickets,
   };
 }
 
-async function salesStats(companyId: string) {
+async function salesStats(companyId: string, agentId: string | null) {
+  const leadFilter = agentId
+    ? { companyId, deletedAt: null, assignedToId: agentId }
+    : { companyId, deletedAt: null };
+
   const [newLeads, qualifiedLeads, openDeals, wonDeals, pipelineValue] =
     await Promise.all([
+      prisma.lead.count({ where: { ...leadFilter, status: "NEW" } }),
+      prisma.lead.count({ where: { ...leadFilter, status: "QUALIFIED" } }),
       prisma.lead.count({
-        where: { companyId, deletedAt: null, status: "NEW" },
+        where: {
+          ...leadFilter,
+          status: { notIn: ["WON", "LOST", "NOT_INTERESTED"] },
+        },
       }),
-      prisma.lead.count({
-        where: { companyId, deletedAt: null, status: "QUALIFIED" },
-      }),
-      prisma.deal.count({
-        where: { companyId, deletedAt: null, status: "OPEN" },
-      }),
-      prisma.deal.count({
-        where: { companyId, deletedAt: null, status: "WON" },
-      }),
-      prisma.deal.aggregate({
-        where: { companyId, deletedAt: null, status: "OPEN" },
-        _sum: { value: true },
+      prisma.lead.count({ where: { ...leadFilter, status: "WON" } }),
+      prisma.lead.aggregate({
+        where: {
+          ...leadFilter,
+          status: { notIn: ["WON", "LOST", "NOT_INTERESTED"] },
+        },
+        _sum: { expectedRevenue: true },
       }),
     ]);
 
@@ -56,7 +76,7 @@ async function salesStats(companyId: string) {
     qualifiedLeads,
     openDeals,
     wonDeals,
-    pipelineValue: pipelineValue._sum.value ?? 0,
+    pipelineValue: pipelineValue._sum.expectedRevenue ?? 0,
   };
 }
 
@@ -94,23 +114,29 @@ export const GET = withApi(
     try {
       const { searchParams } = new URL(req.url);
       const type = searchParams.get("type") ?? "executive";
+      const agentId = resolveAgentId(user, searchParams.get("agentId"));
 
       let stats: Record<string, unknown>;
       switch (type) {
         case "sales":
-          stats = await salesStats(companyId);
+        case "agent":
+          stats = await salesStats(companyId, agentId);
           break;
         case "support":
-          stats = await supportStats(companyId);
+          if (agentId) {
+            stats = { open: 0, inProgress: 0, waiting: 0, resolved: 0, urgent: 0 };
+          } else {
+            stats = await supportStats(companyId);
+          }
           break;
         case "executive":
-          stats = await executiveStats(companyId);
+          stats = await executiveStats(companyId, agentId);
           break;
         default:
           return jsonError("Invalid dashboard type. Use executive, sales, or support.", 400);
       }
 
-      return jsonOk({ type, stats });
+      return jsonOk({ type, agentId, stats });
     } catch (error) {
       return handleApiError(error);
     }

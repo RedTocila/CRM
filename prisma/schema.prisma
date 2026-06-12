@@ -120,6 +120,9 @@ enum EmailTemplateCategory {
   THANK_YOU
   OBJECTION
   CLOSING
+  GREETING
+  BILLING
+  REVIEW
   CUSTOM
 }
 

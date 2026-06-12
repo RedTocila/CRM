@@ -6,6 +6,8 @@ import { jsonOk, jsonError, handleApiError } from "@/lib/api/response";
 import { requirePerm } from "@/lib/api/guard";
 import { canManageTeam, canManageAccounts } from "@/lib/team/access";
 import { getAccessForRole } from "@/lib/team/agent-access";
+import { canViewAgentProfile } from "@/lib/agents/scope";
+import { agentPerformanceStats } from "@/lib/agents/stats";
 
 const MEMBER_TAGS = ["ADMIN", "AGENT", "DEVELOPER", "MANAGER"] as const;
 
@@ -23,7 +25,7 @@ export const GET = withApi(
     if (denied) return denied;
 
     const isSelf = params.userId === user.id;
-    if (!isSelf && !canManageTeam(user)) {
+    if (!canViewAgentProfile(user, params.userId)) {
       return jsonError("Forbidden", 403);
     }
 
@@ -38,17 +40,38 @@ export const GET = withApi(
       if (!member) return jsonError("Member not found", 404);
 
       const permissions = member.role.permissions.map((p) => p.permission.key);
-      const [assignedLeads, callsMade, emailsSent] = await Promise.all([
-        prisma.lead.count({ where: { companyId, assignedToId: params.userId, deletedAt: null } }),
-        prisma.leadCall.count({ where: { companyId, userId: params.userId } }),
-        prisma.leadEmail.count({ where: { companyId, userId: params.userId } }),
-      ]);
+      const [assignedLeads, callsMade, emailsSent, performance, recentLeads] =
+        await Promise.all([
+          prisma.lead.count({
+            where: { companyId, assignedToId: params.userId, deletedAt: null },
+          }),
+          prisma.leadCall.count({ where: { companyId, userId: params.userId } }),
+          prisma.leadEmail.count({ where: { companyId, userId: params.userId } }),
+          agentPerformanceStats(companyId, params.userId),
+          prisma.lead.findMany({
+            where: { companyId, assignedToId: params.userId, deletedAt: null },
+            orderBy: { updatedAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              status: true,
+              priority: true,
+              expectedRevenue: true,
+              updatedAt: true,
+            },
+          }),
+        ]);
 
       return jsonOk({
         data: {
           ...member,
           stats: { assignedLeads, callsMade, emailsSent },
+          performance,
+          recentLeads,
           access: getAccessForRole(member.role.slug, permissions),
+          viewerIsAdmin: canManageTeam(user) && !isSelf,
         },
       });
     } catch (error) {
