@@ -1,5 +1,5 @@
-import { EntityModule } from "@/components/shared/entity-module";
+import { DocumentsPage } from "@/components/documents/documents-page";
 
-export default function DocumentsPage() {
-  return <EntityModule entity="documents" />;
+export default function Page() {
+  return <DocumentsPage />;
 }

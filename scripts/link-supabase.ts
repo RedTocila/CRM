@@ -92,6 +92,21 @@ upsertEnv("DIRECT_URL", directUrl);
 upsertEnv("NEXT_PUBLIC_SUPABASE_URL", projectUrl);
 upsertEnv("SUPABASE_PROJECT_REF", projectRef);
 
+// Preserve Supabase API keys if already in .env (do not overwrite with empty)
+const examplePath = resolve(process.cwd(), ".env.example");
+if (existsSync(examplePath)) {
+  const example = readFileSync(examplePath, "utf8");
+  for (const key of ["NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"] as const) {
+    if (!new RegExp(`^${key}=.+`, "m").test(content)) {
+      const m = example.match(new RegExp(`^${key}=(.+)$`, "m"));
+      if (m?.[1]) {
+        const val = m[1].replace(/^"|"$/g, "");
+        if (val && !val.includes("your-")) upsertEnv(key, val);
+      }
+    }
+  }
+}
+
 if (!/AUTH_SECRET=/.test(content) && !/NEXTAUTH_SECRET=/.test(content)) {
   const secret = randomBytes(32).toString("base64");
   upsertEnv("AUTH_SECRET", secret);

@@ -13,6 +13,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "supabase:link": "tsx scripts/link-supabase.ts",
+    "supabase:setup": "tsx scripts/setup-supabase.ts",
+    "supabase:provision": "tsx scripts/provision-supabase.ts",
+    "vercel:env": "bash scripts/sync-vercel-env.sh",
     "postinstall": "prisma generate"
   },
   "prisma": {

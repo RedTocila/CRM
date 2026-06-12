@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { createPgPool } from "../src/lib/db/pool";
 import "dotenv/config";
 
 export function createSeedPrismaClient() {
@@ -8,7 +8,7 @@ export function createSeedPrismaClient() {
   if (!connectionString) {
     throw new Error("DATABASE_URL environment variable is not set");
   }
-  const pool = new Pool({ connectionString });
+  const pool = createPgPool(connectionString);
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
