@@ -3,7 +3,7 @@ import { withApi } from "@/lib/api/middleware";
 import { jsonOk, handleApiError } from "@/lib/api/response";
 import { requirePerm } from "@/lib/api/guard";
 import { leadListWhere } from "@/lib/leads/access";
-import { KANBAN_STATUSES, LOST_STATUSES } from "@/lib/leads/constants";
+import { getKanbanColumns, leadsForKanbanColumn } from "@/lib/leads/kanban-columns";
 
 export const GET = withApi(
   async (req, { companyId, user }) => {
@@ -11,27 +11,26 @@ export const GET = withApi(
     if (denied) return denied;
     try {
       const agentId = new URL(req.url).searchParams.get("agentId");
-      const leads = await prisma.lead.findMany({
-        where: leadListWhere(user, companyId, agentId),
-        orderBy: [{ kanbanOrder: "asc" }, { updatedAt: "desc" }],
-        include: {
-          assignee: { select: { id: true, name: true } },
-          tags: { include: { tag: true } },
-        },
-      });
+      const [columnConfig, leads] = await Promise.all([
+        getKanbanColumns(companyId),
+        prisma.lead.findMany({
+          where: leadListWhere(user, companyId, agentId),
+          orderBy: [{ kanbanOrder: "asc" }, { updatedAt: "desc" }],
+          include: {
+            assignee: { select: { id: true, name: true } },
+            tags: { include: { tag: true } },
+          },
+        }),
+      ]);
 
-      const columns = [
-        ...KANBAN_STATUSES.map((status) => ({
-          status,
-          leads: leads.filter((l) => l.status === status),
-        })),
-        {
-          status: "LOST",
-          leads: leads.filter((l) => LOST_STATUSES.includes(l.status)),
-        },
-      ];
+      const columns = columnConfig.map((col) => ({
+        statusKey: col.statusKey,
+        label: col.label,
+        order: col.order,
+        leads: leadsForKanbanColumn(leads, col.statusKey),
+      }));
 
-      return jsonOk({ data: columns });
+      return jsonOk({ data: columns, columns: columnConfig });
     } catch (error) {
       return handleApiError(error);
     }

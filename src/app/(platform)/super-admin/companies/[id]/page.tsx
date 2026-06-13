@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/shared/data-table";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import { cn } from "@/lib/utils";
 
 interface CompanyDetail {
   id: string;
@@ -44,12 +45,28 @@ export default function CompanyDetailPage() {
   };
 
   const toggleModule = async (moduleId: string, enabled: boolean) => {
-    await fetch(`/api/platform/companies/${id}/modules`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ modules: [{ moduleId, enabled }] }),
+    setCompany((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        modules: prev.modules.map((m) =>
+          m.moduleId === moduleId ? { ...m, enabled } : m
+        ),
+      };
     });
-    load();
+
+    try {
+      const res = await fetch(`/api/platform/companies/${id}/modules`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modules: [{ moduleId, enabled }] }),
+      });
+      if (!res.ok) throw new Error("Failed to update module");
+      await load();
+    } catch {
+      toast.error("Failed to update module");
+      load();
+    }
   };
 
   const impersonate = async () => {
@@ -94,12 +111,16 @@ export default function CompanyDetailPage() {
           {company.modules?.map((m) => (
             <div
               key={m.moduleId}
-              className={`flex items-center justify-between rounded-lg p-2 ${
-                m.moduleId === "ai_assistant" ? "border border-violet-200 bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/20" : ""
-              }`}
+              className={cn(
+                "flex items-center justify-between rounded-lg p-2",
+                m.moduleId === "ai_assistant" &&
+                  "border border-violet-200 bg-violet-50/50 dark:border-violet-800 dark:bg-violet-950/20"
+              )}
             >
-              <div>
-                <Label>{m.module?.name ?? m.moduleId}</Label>
+              <div className="min-w-0 flex-1 pr-3">
+                <Label htmlFor={`module-${m.moduleId}`} className="cursor-pointer">
+                  {m.module?.name ?? m.moduleId}
+                </Label>
                 {m.moduleId === "ai_assistant" && (
                   <p className="text-xs text-muted-foreground">
                     Enable or disable AI assistant for this tenant
@@ -107,6 +128,7 @@ export default function CompanyDetailPage() {
                 )}
               </div>
               <Switch
+                id={`module-${m.moduleId}`}
                 checked={m.enabled}
                 onCheckedChange={(checked) => toggleModule(m.moduleId, checked)}
               />

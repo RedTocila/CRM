@@ -17,30 +17,39 @@ export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) {
-    return (
-      <Button variant="ghost" size="icon" className={cn("h-9 w-9", className)} disabled>
-        <Sun className="h-4 w-4" />
-      </Button>
-    );
-  }
-
-  const isDark = (theme === "system" ? resolvedTheme : theme) === "dark";
+  const isDark = mounted && (theme === "system" ? resolvedTheme : theme) === "dark";
   const toggle = () => setTheme(isDark ? "light" : "dark");
 
   if (variant === "sidebar") {
     return (
       <button
         type="button"
-        onClick={toggle}
+        onClick={mounted ? toggle : undefined}
+        disabled={!mounted}
+        suppressHydrationWarning
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent/10 hover:text-sidebar-foreground transition-all",
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent/10 hover:text-sidebar-foreground transition-all disabled:opacity-70",
           className
         )}
+        aria-label="Toggle theme"
       >
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        {isDark ? "Light mode" : "Dark mode"}
+        <span suppressHydrationWarning>{isDark ? "Light mode" : "Dark mode"}</span>
       </button>
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn("h-9 w-9 text-muted-foreground", className)}
+        disabled
+        aria-label="Toggle theme"
+      >
+        <Sun className="h-4 w-4" />
+      </Button>
     );
   }
 

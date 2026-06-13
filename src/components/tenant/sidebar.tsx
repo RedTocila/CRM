@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Settings,
@@ -48,27 +48,35 @@ function NavLink({
   label: string;
   active: boolean;
 }) {
+  const router = useRouter();
+
   return (
     <Link
       href={href}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        router.push(href);
+      }}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+        "group relative z-10 flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
         active
           ? "bg-sidebar-accent/15 text-sidebar-accent-foreground"
           : "text-sidebar-muted hover:bg-sidebar-accent/8 hover:text-sidebar-foreground"
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-accent" />
+        <span className="pointer-events-none absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-accent" />
       )}
       <Icon
         className={cn(
-          "h-4 w-4 shrink-0 transition-colors",
+          "pointer-events-none h-4 w-4 shrink-0 transition-colors",
           active ? "text-sidebar-accent" : "text-sidebar-muted group-hover:text-sidebar-foreground"
         )}
       />
-      <span className="truncate">{label}</span>
-      {active && <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-60" />}
+      <span className="pointer-events-none truncate">{label}</span>
+      {active && <ChevronRight className="pointer-events-none ml-auto h-3.5 w-3.5 opacity-60" />}
     </Link>
   );
 }
@@ -83,8 +91,19 @@ export function TenantSidebar({
   const pathname = usePathname();
   const base = `/app/${tenantSlug}`;
 
-  const isActive = (href: string) =>
-    href === base ? pathname === base : pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (href: string, moduleId?: string) => {
+    if (href === base) return pathname === base;
+    if (moduleId === "pipeline") {
+      return pathname === href || pathname.startsWith(`${href}/`);
+    }
+    if (moduleId === "leads") {
+      return (
+        pathname === href ||
+        (pathname.startsWith(`${href}/`) && !pathname.startsWith(`${base}/leads/kanban`))
+      );
+    }
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
 
   const sorted = [...modules].sort((a, b) => {
     const order = ["dashboard", "leads", "agents", "pipeline", "marketing", "email_campaigns", "forms", "ai_assistant", "team", "reports"];
@@ -92,7 +111,7 @@ export function TenantSidebar({
   });
 
   return (
-    <aside className="flex h-full w-[272px] flex-shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className="relative z-20 flex h-full w-[272px] flex-shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -114,7 +133,7 @@ export function TenantSidebar({
         </div>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+      <nav className="relative z-10 flex-1 space-y-0.5 overflow-y-auto p-3">
         <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted/80">
           Menu
         </p>
@@ -128,7 +147,7 @@ export function TenantSidebar({
               href={href}
               icon={Icon}
               label={mod.name}
-              active={isActive(href)}
+              active={isActive(href, mod.id)}
             />
           );
         })}
