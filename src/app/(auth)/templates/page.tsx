@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { CRM_TEMPLATES, TEMPLATE_PASSWORD } from "@/lib/crm-templates";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 export default function TemplatesPage() {
   return (
@@ -20,7 +20,7 @@ export default function TemplatesPage() {
             <h1 className="text-3xl font-bold tracking-tight">Industry CRM Templates</h1>
             <p className="mt-2 text-muted-foreground max-w-xl">
               Three ready-to-go workspaces with pipelines, sample contacts, and realistic demo data.
-              Sign in with the credentials below to explore each template.
+              Open any template instantly — no sign-in required for preview.
             </p>
           </div>
           <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -55,17 +55,13 @@ export default function TemplatesPage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 rounded-lg bg-muted/50 p-3 text-xs space-y-1 font-mono">
-                <p>
-                  <span className="text-muted-foreground">Email:</span> {template.ownerEmail}
-                </p>
-                <p>
-                  <span className="text-muted-foreground">Password:</span> {TEMPLATE_PASSWORD}
-                </p>
-              </div>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Share link:{" "}
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono">/app/{template.slug}</code>
+              </p>
               <Button asChild className="mt-5 w-full">
-                <Link href="/login">
-                  Sign in to explore
+                <Link href={`/api/preview/${template.slug}`}>
+                  Open demo dashboard
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -76,7 +72,9 @@ export default function TemplatesPage() {
         <p className="mt-10 text-center text-sm text-muted-foreground">
           First time? Run{" "}
           <code className="rounded bg-muted px-1.5 py-0.5 text-xs">npm run db:seed</code> to create
-          all template workspaces and sample data.
+          all template workspaces and sample data. Demo accounts use password{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{TEMPLATE_PASSWORD}</code> if you
+          sign in manually later.
         </p>
       </div>
     </div>

@@ -42,3 +42,11 @@ export const CRM_TEMPLATES: CrmTemplateMeta[] = [
 ];
 
 export const TEMPLATE_PASSWORD = "admin123";
+
+export function isDemoTemplateSlug(slug: string): boolean {
+  return CRM_TEMPLATES.some((t) => t.slug === slug);
+}
+
+export function getDemoTemplate(slug: string): CrmTemplateMeta | undefined {
+  return CRM_TEMPLATES.find((t) => t.slug === slug);
+}

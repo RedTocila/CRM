@@ -1,10 +1,18 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth/auth.config";
+import { isDemoTemplateSlug } from "@/lib/crm-templates";
 
 const { auth } = NextAuth(authConfig);
 
-const publicPaths = ["/login", "/register", "/templates", "/api/auth", "/api/webhooks"];
+const publicPaths = [
+  "/login",
+  "/register",
+  "/templates",
+  "/api/auth",
+  "/api/webhooks",
+  "/api/preview",
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -29,6 +37,10 @@ export default auth((req) => {
   }
 
   if (pathname.startsWith("/app/") && !req.auth?.user) {
+    const tenantSlug = pathname.split("/")[2];
+    if (tenantSlug && isDemoTemplateSlug(tenantSlug)) {
+      return NextResponse.redirect(new URL(`/api/preview/${tenantSlug}`, req.url));
+    }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
